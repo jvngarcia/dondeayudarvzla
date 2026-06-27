@@ -49,3 +49,6 @@ create policy "Admin full access"
 
 -- Migración: Agregar columna estado_insumos
 alter table acopios add column if not exists estado_insumos text check (estado_insumos in ('full', 'necesita'));
+
+-- Migración: Agregar columna categoria (refugio o centro de acopio)
+alter table acopios add column if not exists categoria text not null default 'centro_acopio' check (categoria in ('refugio', 'centro_acopio'));

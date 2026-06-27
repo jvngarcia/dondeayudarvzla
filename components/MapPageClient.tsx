@@ -36,6 +36,21 @@ function SkeletonMap() {
   );
 }
 
+const CategoriaBadge = ({ categoria }: { categoria: string }) => {
+  if (categoria === "refugio") {
+    return (
+      <span className="inline-block text-xs px-2 py-0.5 rounded-full border bg-purple-100 text-purple-700 border-purple-300">
+        Refugio
+      </span>
+    );
+  }
+  return (
+    <span className="inline-block text-xs px-2 py-0.5 rounded-full border bg-red-100 text-red-700 border-red-300">
+      Centro de Acopio
+    </span>
+  );
+};
+
 const TipoBadge = ({ tipo }: { tipo: string }) => {
   const colors: Record<string, string> = {
     punto_fijo: "bg-blue-100 text-blue-700 border-blue-300",
@@ -75,6 +90,7 @@ function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
         <div className="flex-1">
           <h3 className="font-bold text-lg leading-tight">{acopio.nombre}</h3>
           <div className="flex gap-1.5 mt-1">
+            <CategoriaBadge categoria={acopio.categoria} />
             <TipoBadge tipo={acopio.tipo} />
             <EstadoInsumosBadge estado={acopio.estado_insumos} />
           </div>
@@ -150,6 +166,7 @@ export default function MapPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string>("");
   const [filtroCategoria, setFiltroCategoria] = useState<string>("");
+  const [filtroCategoriaLugar, setFiltroCategoriaLugar] = useState<string>("");
   const [filtroEstadoInsumos, setFiltroEstadoInsumos] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
   const [selected, setSelected] = useState<Acopio | null>(null);
@@ -175,11 +192,12 @@ export default function MapPageClient() {
     return acopios.filter((a) => {
       if (filtroTipo && a.tipo !== filtroTipo) return false;
       if (filtroCategoria && !a.que_reciben.includes(filtroCategoria)) return false;
+      if (filtroCategoriaLugar && a.categoria !== filtroCategoriaLugar) return false;
       if (filtroEstadoInsumos && a.estado_insumos !== filtroEstadoInsumos) return false;
       if (busqueda && !a.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false;
       return true;
     });
-  }, [acopios, filtroTipo, filtroCategoria, filtroEstadoInsumos, busqueda]);
+  }, [acopios, filtroTipo, filtroCategoria, filtroCategoriaLugar, filtroEstadoInsumos, busqueda]);
 
   if (error) {
     return (
@@ -290,6 +308,23 @@ export default function MapPageClient() {
             >
               {t.color && <span className={`w-2 h-2 rounded-full ${t.color}`} />}
               {t.label}
+            </button>
+          ))}
+          <span className="w-px bg-gray-300 mx-1" />
+          {(["centro_acopio", "refugio"] as const).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setFiltroCategoriaLugar(filtroCategoriaLugar === cat ? "" : cat)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                filtroCategoriaLugar === cat
+                  ? cat === "refugio"
+                    ? "bg-purple-600 text-white"
+                    : "bg-red-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${cat === "refugio" ? "bg-purple-500" : "bg-red-500"}`} />
+              {cat === "refugio" ? "Refugio" : "Centro"}
             </button>
           ))}
           <span className="w-px bg-gray-300 mx-1" />

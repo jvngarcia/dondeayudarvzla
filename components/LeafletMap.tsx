@@ -18,6 +18,8 @@ const TYPE_COLORS: Record<string, string> = {
   organizacion: "#22c55e",
 };
 
+const CATEGORIA_COLOR = "#8b5cf6";
+
 function MarkerIcon({ color, tipo }: { color: string; tipo: string }) {
   const icons: Record<string, string> = {
     punto_fijo: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
@@ -58,10 +60,33 @@ function createRichIcon(color: string, tipo: string): L.DivIcon {
   });
 }
 
+const REFUGIO_ICON_PATH = "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z";
+
+function createRefugioIcon(): L.DivIcon {
+  const iconSvg = encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="${REFUGIO_ICON_PATH}"/></svg>`
+  );
+  return L.divIcon({
+    className: "marker-bounce-in",
+    html: `<div class="marker-pin" style="
+      width: 36px; height: 36px;
+      background: ${CATEGORIA_COLOR};
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    "><img src="data:image/svg+xml,${iconSvg}" alt="" width="14" height="14" /></div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+}
+
 const icons: Record<string, L.DivIcon> = {
   punto_fijo: createRichIcon("#3b82f6", "punto_fijo"),
   punto_movil: createRichIcon("#f97316", "punto_movil"),
   organizacion: createRichIcon("#22c55e", "organizacion"),
+  refugio: createRefugioIcon(),
 };
 
 function TileErrorHandler() {
@@ -102,7 +127,7 @@ export default function LeafletMap({ acopios, centro = [10.4806, -66.9036], onMa
           <Marker
             key={acopio.id}
             position={[acopio.lat ?? centro[0], acopio.lng ?? centro[1]]}
-            icon={icons[acopio.tipo] || icons.punto_fijo}
+            icon={acopio.categoria === "refugio" ? icons.refugio : (icons[acopio.tipo] || icons.punto_fijo)}
             eventHandlers={{
               click: () => onMarkerClick?.(acopio),
             }}

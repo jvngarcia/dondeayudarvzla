@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import type { TipoAcopio, EstadoInsumos } from "@/types";
+import type { TipoAcopio, EstadoInsumos, CategoriaAcopio } from "@/types";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!;
 const CATEGORIAS = ["agua", "comida", "ropa", "medicinas", "higiene", "cobijas", "voluntarios", "otros"];
@@ -34,11 +34,12 @@ export default function ReportarPage() {
     horario: "",
     que_reciben: [] as string[],
     estado_insumos: null as EstadoInsumos | null,
+    categoria: "centro_acopio" as CategoriaAcopio,
   });
   const [foto, setFoto] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const toggleCategoria = (cat: string) => {
+  const toggleQueReciben = (cat: string) => {
     setForm((prev) => ({
       ...prev,
       que_reciben: prev.que_reciben.includes(cat)
@@ -52,6 +53,7 @@ export default function ReportarPage() {
     if (!form.nombre.trim()) errs.nombre = "El nombre es obligatorio";
     if (!form.direccion.trim()) errs.direccion = "La dirección es obligatoria";
     if (!form.contacto.trim()) errs.contacto = "El contacto es obligatorio";
+    if (!form.categoria) errs.categoria = "Selecciona una categoría";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -73,6 +75,7 @@ export default function ReportarPage() {
     body.append("direccion", form.direccion);
     body.append("contacto", form.contacto);
     body.append("horario", form.horario);
+    body.append("categoria", form.categoria);
     body.append("que_reciben", form.que_reciben.join(","));
     if (form.estado_insumos) body.append("estado_insumos", form.estado_insumos);
     if (foto) body.append("foto", foto);
@@ -182,6 +185,35 @@ export default function ReportarPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Categoría *
+            </label>
+            <div className="flex gap-2">
+              {(["centro_acopio", "refugio"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => { setForm({ ...form, categoria: c }); setErrors({ ...errors, categoria: "" }); }}
+                  className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border-2 transition-all ${
+                    form.categoria === c
+                      ? c === "refugio"
+                        ? "bg-purple-600 text-white border-purple-600"
+                        : "bg-red-600 text-white border-red-600"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {c === "refugio" ? "🏠 Refugio" : "📦 Centro de Acopio"}
+                </button>
+              ))}
+            </div>
+            {errors.categoria && (
+              <p className="text-red-600 text-xs mt-1 flex items-center gap-1">
+                <span>⚠️</span> {errors.categoria}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Dirección *
             </label>
             <input
@@ -242,7 +274,7 @@ export default function ReportarPage() {
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => toggleCategoria(cat)}
+                  onClick={() => toggleQueReciben(cat)}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all ${
                     form.que_reciben.includes(cat)
                       ? "bg-red-600 text-white border-red-600"
