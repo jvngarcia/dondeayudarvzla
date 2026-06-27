@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState, useMemo } from "react";
-import type { Acopio } from "@/types";
+import type { Acopio, EstadoInsumos } from "@/types";
 
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), {
   ssr: false,
@@ -52,12 +52,27 @@ const TipoBadge = ({ tipo }: { tipo: string }) => {
   );
 };
 
+const EstadoInsumosBadge = ({ estado }: { estado: EstadoInsumos | null }) => {
+  if (!estado) return null;
+  const isFull = estado === "full";
+  return (
+    <span className={`inline-block text-xs px-2 py-0.5 rounded-full border ${
+      isFull
+        ? "bg-green-100 text-green-700 border-green-300"
+        : "bg-orange-100 text-orange-700 border-orange-300"
+    }`}>
+      {isFull ? "Full" : "Necesita"}
+    </span>
+  );
+};
+
 export default function MapPageClient() {
   const [acopios, setAcopios] = useState<Acopio[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string>("");
   const [filtroCategoria, setFiltroCategoria] = useState<string>("");
+  const [filtroEstadoInsumos, setFiltroEstadoInsumos] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
   const [selected, setSelected] = useState<Acopio | null>(null);
 
@@ -81,10 +96,11 @@ export default function MapPageClient() {
     return acopios.filter((a) => {
       if (filtroTipo && a.tipo !== filtroTipo) return false;
       if (filtroCategoria && !a.que_reciben.includes(filtroCategoria)) return false;
+      if (filtroEstadoInsumos && a.estado_insumos !== filtroEstadoInsumos) return false;
       if (busqueda && !a.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false;
       return true;
     });
-  }, [acopios, filtroTipo, filtroCategoria, busqueda]);
+  }, [acopios, filtroTipo, filtroCategoria, filtroEstadoInsumos, busqueda]);
 
   if (error) {
     return (
@@ -146,7 +162,10 @@ export default function MapPageClient() {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <h3 className="font-bold text-lg leading-tight">{selected.nombre}</h3>
-                    <TipoBadge tipo={selected.tipo} />
+                    <div className="flex gap-1.5 mt-1">
+                      <TipoBadge tipo={selected.tipo} />
+                      <EstadoInsumosBadge estado={selected.estado_insumos} />
+                    </div>
                   </div>
                   <button
                     onClick={() => setSelected(null)}
@@ -247,6 +266,22 @@ export default function MapPageClient() {
               }`}
             >
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </button>
+          ))}
+          <span className="w-px bg-gray-300 mx-1" />
+          {(["full", "necesita"] as const).map((est) => (
+            <button
+              key={est}
+              onClick={() => setFiltroEstadoInsumos(filtroEstadoInsumos === est ? "" : est)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                filtroEstadoInsumos === est
+                  ? est === "full"
+                    ? "bg-green-600 text-white"
+                    : "bg-orange-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {est === "full" ? "Full" : "Necesita"}
             </button>
           ))}
         </div>

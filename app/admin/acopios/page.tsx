@@ -54,6 +54,7 @@ export default function AdminAcopiosPage() {
         contacto: editForm.contacto,
         horario: editForm.horario,
         que_reciben: editForm.que_reciben,
+        estado_insumos: editForm.estado_insumos,
         lat: editForm.lat,
         lng: editForm.lng,
       })
@@ -142,6 +143,18 @@ export default function AdminAcopiosPage() {
                           {acopio.status === "aprobado" ? "Aprobado" : "Rechazado"}
                         </span>
                       </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Estado de insumos</label>
+                        <select
+                          value={editForm.estado_insumos || ""}
+                          onChange={(e) => setEditForm({ ...editForm, estado_insumos: (e.target.value || null) as any })}
+                          className="border rounded px-2 py-1 w-full text-sm"
+                        >
+                          <option value="">No especificado</option>
+                          <option value="full">Full - No necesitan</option>
+                          <option value="necesita">Necesita insumos</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div>
@@ -185,6 +198,13 @@ export default function AdminAcopiosPage() {
                       }`}>
                         {acopio.status === "aprobado" ? "Aprobado" : "Rechazado"}
                       </span>
+                      {acopio.estado_insumos && (
+                        <span className={`inline-block mt-2 ml-1 px-2 py-1 rounded text-xs font-medium ${
+                          acopio.estado_insumos === "full" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                        }`}>
+                          {acopio.estado_insumos === "full" ? "Full" : "Necesita"}
+                        </span>
+                      )}
                     </div>
                     <div className="flex gap-2 ml-4">
                       <button onClick={() => startEdit(acopio)} className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">

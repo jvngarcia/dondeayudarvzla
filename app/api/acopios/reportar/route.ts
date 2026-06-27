@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
   const contacto = formData.get("contacto") as string;
   const horario = formData.get("horario") as string | null;
   const queRecibenRaw = formData.get("que_reciben") as string;
+  const estadoInsumos = formData.get("estado_insumos") as string | null;
   const foto = formData.get("foto") as File | null;
 
   if (!nombre || !tipo || !direccion || !contacto) {
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest) {
     contacto,
     horario: horario || null,
     que_reciben: queReciben,
+    estado_insumos: estadoInsumos || null,
     foto_url: fotoUrl,
     lat: coords?.lat || null,
     lng: coords?.lng || null,

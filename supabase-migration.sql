@@ -46,3 +46,6 @@ create policy "Admin full access"
   on acopios for all
   using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
+
+-- Migración: Agregar columna estado_insumos
+alter table acopios add column if not exists estado_insumos text check (estado_insumos in ('full', 'necesita'));

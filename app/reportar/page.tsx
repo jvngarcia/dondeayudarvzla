@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import type { TipoAcopio } from "@/types";
+import type { TipoAcopio, EstadoInsumos } from "@/types";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!;
 const CATEGORIAS = ["agua", "comida", "ropa", "medicinas", "higiene", "cobijas", "voluntarios", "otros"];
@@ -33,6 +33,7 @@ export default function ReportarPage() {
     contacto: "",
     horario: "",
     que_reciben: [] as string[],
+    estado_insumos: null as EstadoInsumos | null,
   });
   const [foto, setFoto] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -73,6 +74,7 @@ export default function ReportarPage() {
     body.append("contacto", form.contacto);
     body.append("horario", form.horario);
     body.append("que_reciben", form.que_reciben.join(","));
+    if (form.estado_insumos) body.append("estado_insumos", form.estado_insumos);
     if (foto) body.append("foto", foto);
 
     try {
@@ -250,6 +252,47 @@ export default function ReportarPage() {
                   {cat.charAt(0).toUpperCase() + cat.slice(1)}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Estado de insumos
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, estado_insumos: null })}
+                className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border-2 transition-all ${
+                  form.estado_insumos === null
+                    ? "bg-gray-800 text-white border-gray-800"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                No especificar
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, estado_insumos: "full" })}
+                className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border-2 transition-all ${
+                  form.estado_insumos === "full"
+                    ? "bg-green-600 text-white border-green-600"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                Full - No necesitan
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, estado_insumos: "necesita" })}
+                className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border-2 transition-all ${
+                  form.estado_insumos === "necesita"
+                    ? "bg-red-600 text-white border-red-600"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                Necesita insumos
+              </button>
             </div>
           </div>
 
