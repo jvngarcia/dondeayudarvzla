@@ -51,7 +51,7 @@ function EndpointSection() {
               ["filter[ciudad]", "string", "Filtrar por ciudad (case-insensitive)", "?filter[ciudad]=Caracas"],
               ["filter[tipo]", "string", "punto_fijo, punto_movil, organizacion", "?filter[tipo]=organizacion"],
               ["filter[estado_insumos]", "string", "full, necesita", "?filter[estado_insumos]=necesita"],
-              ["filter[que_reciben]", "string", "Filtrar por categoría de insumo", "?filter[que_reciben]=comida"],
+              ["filter[recurso]", "string", "Filtrar por nombre de recurso que necesitan", "?filter[recurso]=agua"],
             ].map(([param, type, desc, example]) => (
               <tr key={param}>
                 <td className="px-3 py-2"><code className="text-red-600 text-xs">{param}</code></td>
@@ -117,7 +117,7 @@ function SchemaTable() {
     ["lng", "float | null", "Longitud para el mapa"],
     ["contacto", "string", "Información de contacto"],
     ["horario", "string | null", "Horario de atención"],
-    ["que_reciben", "string[]", "Lista de categorías de insumos"],
+    ["recursos", "object[]", "Lista de recursos que necesitan (id, nombre, descripcion, categoria)"],
     ["estado_insumos", "string | null", "full (abastecido) o necesita"],
     ["foto_url", "string | null", "URL de la foto del lugar"],
     ["created_at", "string (ISO)", "Fecha de creación"],
@@ -209,7 +209,10 @@ export default function DocsPage() {
         "lng": -66.85,
         "contacto": "(0212) 555-1234",
         "horario": "8am - 6pm",
-        "que_reciben": ["medicinas", "voluntarios"],
+        "recursos": [
+          { "id": "uuid-recurso-1", "nombre": "Medicinas", "descripcion": null, "categoria": "medico" },
+          { "id": "uuid-recurso-2", "nombre": "Voluntarios", "descripcion": null, "categoria": "otro" }
+        ],
         "estado_insumos": "necesita",
         "foto_url": null,
         "created_at": "2026-06-26T00:00:00Z"
@@ -223,7 +226,7 @@ export default function DocsPage() {
     "version": "1.0"
   }
 }`}</CodeBlock>
-            <CopyButton code={`{\n  "data": [\n    {\n      "type": "acopios",\n      "id": "uuid-del-lugar",\n      "attributes": {\n        "nombre": "Cruz Roja Venezolana",\n        "tipo": "organizacion",\n        "direccion": "Av. Andrés Bello, Caracas",\n        "ciudad": "Caracas",\n        "estado": "Distrito Capital",\n        "lat": 10.4961,\n        "lng": -66.85,\n        "contacto": "(0212) 555-1234",\n        "horario": "8am - 6pm",\n        "que_reciben": ["medicinas", "voluntarios"],\n        "estado_insumos": "necesita",\n        "foto_url": null,\n        "created_at": "2026-06-26T00:00:00Z"\n      }\n    }\n  ],\n  "meta": {\n    "total": 1\n  },\n  "jsonapi": {\n    "version": "1.0"\n  }\n}`} />
+            <CopyButton code={`{\n  "data": [\n    {\n      "type": "acopios",\n      "id": "uuid-del-lugar",\n      "attributes": {\n        "nombre": "Cruz Roja Venezolana",\n        "tipo": "organizacion",\n        "direccion": "Av. Andrés Bello, Caracas",\n        "ciudad": "Caracas",\n        "estado": "Distrito Capital",\n        "lat": 10.4961,\n        "lng": -66.85,\n        "contacto": "(0212) 555-1234",\n        "horario": "8am - 6pm",\n        "recursos": [\n          { "id": "uuid-recurso-1", "nombre": "Medicinas", "descripcion": null, "categoria": "medico" },\n          { "id": "uuid-recurso-2", "nombre": "Voluntarios", "descripcion": null, "categoria": "otro" }\n        ],\n        "estado_insumos": "necesita",\n        "foto_url": null,\n        "created_at": "2026-06-26T00:00:00Z"\n      }\n    }\n  ],\n  "meta": {\n    "total": 1\n  },\n  "jsonapi": {\n    "version": "1.0"\n  }\n}`} />
           </div>
         </section>
 

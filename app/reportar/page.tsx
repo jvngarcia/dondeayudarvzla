@@ -3,10 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import type { TipoAcopio, EstadoInsumos, CategoriaAcopio } from "@/types";
+import type { TipoAcopio, EstadoInsumos, CategoriaAcopio, Recurso } from "@/types";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!;
-const CATEGORIAS = ["agua", "comida", "ropa", "medicinas", "higiene", "cobijas", "voluntarios", "otros"];
 
 export default function ReportarPage() {
   const router = useRouter();
@@ -15,8 +14,25 @@ export default function ReportarPage() {
   const [error, setError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(false);
+  const [recursosCatalogo, setRecursosCatalogo] = useState<Recurso[]>([]);
+  const [recursosLoading, setRecursosLoading] = useState(true);
   const turnstileRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef(false);
+
+  useEffect(() => {
+    fetch("/api/recursos")
+      .then((res) => {
+        if (!res.ok) throw new Error("Error al cargar recursos");
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setRecursosCatalogo(data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setRecursosLoading(false));
+  }, []);
 
   useEffect(() => {
     if (!turnstileReady || !turnstileRef.current || renderedRef.current) return;
@@ -26,26 +42,42 @@ export default function ReportarPage() {
       callback: (token: string) => setTurnstileToken(token),
     });
   }, [turnstileReady]);
+
   const [form, setForm] = useState({
     nombre: "",
     tipo: "punto_fijo" as TipoAcopio,
     direccion: "",
     contacto: "",
     horario: "",
-    que_reciben: [] as string[],
+    recursos: [] as string[],
     estado_insumos: null as EstadoInsumos | null,
     categoria: "centro_acopio" as CategoriaAcopio,
   });
   const [foto, setFoto] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const toggleQueReciben = (cat: string) => {
+  const toggleRecurso = (id: string) => {
     setForm((prev) => ({
       ...prev,
-      que_reciben: prev.que_reciben.includes(cat)
-        ? prev.que_reciben.filter((c) => c !== cat)
-        : [...prev.que_reciben, cat],
+      recursos: prev.recursos.includes(id)
+        ? prev.recursos.filter((r) => r !== id)
+        : [...prev.recursos, id],
     }));
+  };
+
+  const grouped = recursosCatalogo.reduce<Record<string, Recurso[]>>((acc, r) => {
+    if (!acc[r.categoria]) acc[r.categoria] = [];
+    acc[r.categoria].push(r);
+    return acc;
+  }, {});
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    medico: "Médico",
+    higiene: "Higiene",
+    alimento: "Alimento",
+    vestimenta: "Vestimenta",
+    refugio: "Refugio",
+    otro: "Otro",
   };
 
   const validate = (): boolean => {
@@ -76,7 +108,7 @@ export default function ReportarPage() {
     body.append("contacto", form.contacto);
     body.append("horario", form.horario);
     body.append("categoria", form.categoria);
-    body.append("que_reciben", form.que_reciben.join(","));
+    body.append("recursos", form.recursos.join(","));
     if (form.estado_insumos) body.append("estado_insumos", form.estado_insumos);
     if (foto) body.append("foto", foto);
 
@@ -267,24 +299,43 @@ export default function ReportarPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              ¿Qué reciben?
+              ¿Qué necesitan?
             </label>
-            <div className="flex flex-wrap gap-2">
-              {CATEGORIAS.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => toggleQueReciben(cat)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all ${
-                    form.que_reciben.includes(cat)
-                      ? "bg-red-600 text-white border-red-600"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </button>
-              ))}
-            </div>
+            {recursosLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                <span className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                Cargando recursos...
+              </div>
+            ) : recursosCatalogo.length === 0 ? (
+              <p className="text-sm text-gray-400 py-2">No hay recursos disponibles en el catálogo</p>
+            ) : (
+              Object.entries(grouped).map(([categoria, items]) => (
+                <div key={categoria} className="mb-3">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    {CATEGORY_LABELS[categoria] || categoria}
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {items.map((r) => {
+                      const isSelected = form.recursos.includes(r.id);
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => toggleRecurso(r.id)}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all ${
+                            isSelected
+                              ? "bg-red-600 text-white border-red-600"
+                              : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          {r.nombre}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <div>

@@ -3,6 +3,18 @@ export type StatusAcopio = "pendiente" | "aprobado" | "rechazado";
 export type EstadoInsumos = "full" | "necesita";
 export type CategoriaAcopio = "refugio" | "centro_acopio";
 
+export interface Recurso {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  categoria: string;
+}
+
+export interface AcopioRecurso {
+  acopio_id: string;
+  recurso_id: string;
+}
+
 export interface Acopio {
   id: string;
   nombre: string;
@@ -14,13 +26,20 @@ export interface Acopio {
   lng: number | null;
   contacto: string;
   horario: string | null;
-  que_reciben: string[];
+  recursos: Recurso[];
+  edit_token: string | null;
   foto_url: string | null;
   fuente: string | null;
   status: StatusAcopio;
   estado_insumos: EstadoInsumos | null;
   categoria: CategoriaAcopio;
   created_at: string;
+}
+
+export interface UpdateAcopioInput {
+  recursos?: string[];
+  contacto?: string;
+  horario?: string;
 }
 
 export interface JsonApiResource {
@@ -41,7 +60,7 @@ export interface ReportFormData {
   direccion: string;
   contacto: string;
   horario?: string;
-  que_reciben: string[];
+  recursos: string[];
   estado_insumos: EstadoInsumos | null;
   categoria: CategoriaAcopio;
   foto?: File | null;

@@ -5,6 +5,8 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import type { Acopio, EstadoInsumos } from "@/types";
 import { SearchIcon, ReportIcon, LocationIcon, PhoneIcon, ClockIcon, PackageIcon, ExpandIcon, NavigationIcon } from "./icons";
+import UpdateAcopioButton from "./UpdateAcopioButton";
+import UpdateAcopioSheet from "./UpdateAcopioSheet";
 
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), {
   ssr: false,
@@ -18,7 +20,7 @@ const TIPOS = [
   { value: "organizacion", label: "Org", color: "bg-green-500" },
 ] as const;
 
-const CATEGORIAS = ["agua", "comida", "ropa", "medicinas", "higiene", "cobijas", "voluntarios", "otros"];
+type RecursoSimple = { id: string; nombre: string };
 
 function SkeletonMap() {
   return (
@@ -83,7 +85,7 @@ const EstadoInsumosBadge = ({ estado }: { estado: EstadoInsumos | null }) => {
   );
 };
 
-function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
+function MarkerInfoContent({ acopio, onUpdateClick }: { acopio: Acopio; onUpdateClick?: () => void }) {
   return (
     <div className="pb-4">
       <div className="flex justify-between items-start mb-3">
@@ -126,23 +128,25 @@ function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
             <span className="text-gray-700">{acopio.horario}</span>
           </div>
         )}
-        {acopio.que_reciben.length > 0 && (
-          <div className="flex items-start gap-2.5">
-            <span className="text-gray-400 mt-0.5 shrink-0">
-              <PackageIcon className="w-4 h-4" />
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {acopio.que_reciben.map((q) => (
+        <div className="flex items-start gap-2.5">
+          <span className="text-gray-400 mt-0.5 shrink-0">
+            <PackageIcon className="w-4 h-4" />
+          </span>
+          <div className="flex flex-wrap gap-1">
+            {acopio.recursos && acopio.recursos.length > 0 ? (
+              acopio.recursos.map((r) => (
                 <span
-                  key={q}
+                  key={r.id}
                   className="inline-block bg-red-50 text-red-700 text-xs px-2 py-0.5 rounded-full"
                 >
-                  {q}
+                  {r.nombre}
                 </span>
-              ))}
-            </div>
+              ))
+            ) : (
+              <span className="text-gray-400 text-xs italic">No necesita nada</span>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {acopio.lat && acopio.lng && (
@@ -156,6 +160,9 @@ function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
           Cómo llegar
         </a>
       )}
+      {onUpdateClick && (
+        <UpdateAcopioButton onClick={onUpdateClick} />
+      )}
     </div>
   );
 }
@@ -165,21 +172,23 @@ export default function MapPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string>("");
-  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
+  const [filtroRecursoId, setFiltroRecursoId] = useState<string>("");
   const [filtroCategoriaLugar, setFiltroCategoriaLugar] = useState<string>("");
   const [filtroEstadoInsumos, setFiltroEstadoInsumos] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
   const [selected, setSelected] = useState<Acopio | null>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [showUpdateSheet, setShowUpdateSheet] = useState(false);
+  const [recursosList, setRecursosList] = useState<RecursoSimple[]>([]);
 
   useEffect(() => {
-    fetch("/api/acopios")
-      .then((res) => {
-        if (!res.ok) throw new Error("Error al cargar datos");
-        return res.json();
-      })
-      .then((data) => {
-        setAcopios(data);
+    Promise.all([
+      fetch("/api/acopios").then((r) => { if (!r.ok) throw new Error("Error al cargar datos"); return r.json(); }),
+      fetch("/api/recursos").then((r) => r.json()),
+    ])
+      .then(([acopiosData, recursosData]) => {
+        setAcopios(acopiosData);
+        setRecursosList(recursosData);
         setLoading(false);
       })
       .catch((err) => {
@@ -191,13 +200,13 @@ export default function MapPageClient() {
   const filtrados = useMemo(() => {
     return acopios.filter((a) => {
       if (filtroTipo && a.tipo !== filtroTipo) return false;
-      if (filtroCategoria && !a.que_reciben.includes(filtroCategoria)) return false;
+      if (filtroRecursoId && !(a.recursos || []).some((r) => r.id === filtroRecursoId)) return false;
       if (filtroCategoriaLugar && a.categoria !== filtroCategoriaLugar) return false;
       if (filtroEstadoInsumos && a.estado_insumos !== filtroEstadoInsumos) return false;
       if (busqueda && !a.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false;
       return true;
     });
-  }, [acopios, filtroTipo, filtroCategoria, filtroCategoriaLugar, filtroEstadoInsumos, busqueda]);
+  }, [acopios, filtroTipo, filtroRecursoId, filtroCategoriaLugar, filtroEstadoInsumos, busqueda]);
 
   if (error) {
     return (
@@ -273,7 +282,7 @@ export default function MapPageClient() {
                     />
                   </div>
                 </div>
-                <MarkerInfoContent acopio={selected} />
+                <MarkerInfoContent acopio={selected} onUpdateClick={() => setShowUpdateSheet(true)} />
               </div>
             </div>
             <div className="hidden md:block absolute top-4 left-4 w-96 max-w-[calc(100vw-2rem)] bg-white/90 backdrop-blur-lg rounded-xl shadow-2xl z-[1001] overflow-y-auto max-h-[calc(100vh-8rem)]">
@@ -287,10 +296,22 @@ export default function MapPageClient() {
                 </button>
               </div>
               <div className="px-4 pb-4 -mt-1">
-                <MarkerInfoContent acopio={selected} />
+                <MarkerInfoContent acopio={selected} onUpdateClick={() => setShowUpdateSheet(true)} />
               </div>
             </div>
           </>
+        )}
+        {showUpdateSheet && selected && (
+          <UpdateAcopioSheet
+            acopio={selected}
+            onClose={() => setShowUpdateSheet(false)}
+            onSaved={(updated) => {
+              setSelected(updated);
+              setAcopios((prev) =>
+                prev.map((a) => (a.id === updated.id ? updated : a))
+              );
+            }}
+          />
         )}
       </div>
 
@@ -328,17 +349,17 @@ export default function MapPageClient() {
             </button>
           ))}
           <span className="w-px bg-gray-300 mx-1" />
-          {CATEGORIAS.map((cat) => (
+          {recursosList.map((r) => (
             <button
-              key={cat}
-              onClick={() => setFiltroCategoria(filtroCategoria === cat ? "" : cat)}
+              key={r.id}
+              onClick={() => setFiltroRecursoId(filtroRecursoId === r.id ? "" : r.id)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                filtroCategoria === cat
+                filtroRecursoId === r.id
                   ? "bg-red-600 text-white"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              {r.nombre}
             </button>
           ))}
           <span className="w-px bg-gray-300 mx-1" />
