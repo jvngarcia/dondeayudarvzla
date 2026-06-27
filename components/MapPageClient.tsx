@@ -97,6 +97,8 @@ export default function MapPageClient() {
     );
   }
 
+  if (loading) return <SkeletonMap />;
+
   return (
     <div className="h-full w-full flex flex-col">
       <div className="bg-white shadow-sm p-2 z-[1000]">
@@ -115,110 +117,104 @@ export default function MapPageClient() {
       </div>
 
       <div className="flex-1 relative">
-        {loading ? (
-          <SkeletonMap />
-        ) : (
+        <LeafletMap acopios={filtrados} onMarkerClick={setSelected} />
+
+        <a
+          href="/reportar"
+          className="absolute bottom-20 right-4 bg-red-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-3xl z-[1000] hover:bg-red-700 active:bg-red-800 transition-transform active:scale-95"
+        >
+          +
+        </a>
+
+        {filtrados.length === 0 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded shadow z-[1000] text-sm text-gray-600">
+            No hay lugares con esos filtros
+          </div>
+        )}
+
+        {selected && (
           <>
-            <LeafletMap acopios={filtrados} onMarkerClick={setSelected} />
-
-            <a
-              href="/reportar"
-              className="absolute bottom-20 right-4 bg-red-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-3xl z-[1000] hover:bg-red-700 active:bg-red-800 transition-transform active:scale-95"
+            <div
+              className="absolute inset-0 z-[1000]"
+              onClick={() => setSelected(null)}
+            />
+            <div
+              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[1001] animate-slide-up max-h-[50vh] overflow-y-auto"
+              style={{ animation: "slideUp 0.2s ease-out" }}
             >
-              +
-            </a>
-
-            {filtrados.length === 0 && !loading && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded shadow z-[1000] text-sm text-gray-600">
-                No hay lugares con esos filtros
-              </div>
-            )}
-
-            {selected && (
-              <>
-                <div
-                  className="absolute inset-0 z-[1000]"
-                  onClick={() => setSelected(null)}
-                />
-                <div
-                  className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[1001] animate-slide-up max-h-[50vh] overflow-y-auto"
-                  style={{ animation: "slideUp 0.2s ease-out" }}
-                >
-                  <div className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-lg leading-tight">{selected.nombre}</h3>
-                        <TipoBadge tipo={selected.tipo} />
-                      </div>
-                      <button
-                        onClick={() => setSelected(null)}
-                        className="text-gray-400 hover:text-gray-600 p-1"
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    {selected.foto_url && (
-                      <img
-                        src={selected.foto_url}
-                        alt={selected.nombre}
-                        className="w-full h-40 object-cover rounded-lg mb-3"
-                      />
-                    )}
-
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-start gap-2">
-                        <span className="text-gray-400 mt-0.5">📍</span>
-                        <span className="text-gray-700">{selected.direccion}</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-gray-400 mt-0.5">📞</span>
-                        <span className="text-gray-700">{selected.contacto}</span>
-                      </div>
-                      {selected.horario && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-400 mt-0.5">🕐</span>
-                          <span className="text-gray-700">{selected.horario}</span>
-                        </div>
-                      )}
-                      {selected.que_reciben.length > 0 && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-400 mt-0.5">📦</span>
-                          <div className="flex flex-wrap gap-1">
-                            {selected.que_reciben.map((q) => (
-                              <span
-                                key={q}
-                                className="inline-block bg-red-50 text-red-700 text-xs px-2 py-0.5 rounded-full"
-                              >
-                                {q}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {selected.lat && selected.lng && (
-                      <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 block w-full bg-red-600 text-white py-3 rounded-lg text-center font-medium hover:bg-red-700 transition-colors"
-                      >
-                        🗺️ Cómo llegar
-                      </a>
-                    )}
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg leading-tight">{selected.nombre}</h3>
+                    <TipoBadge tipo={selected.tipo} />
                   </div>
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    ✕
+                  </button>
                 </div>
 
-                <style jsx>{`
-                  @keyframes slideUp {
-                    from { transform: translateY(100%); }
-                    to { transform: translateY(0); }
-                  }
-                `}</style>
-              </>
-            )}
+                {selected.foto_url && (
+                  <img
+                    src={selected.foto_url}
+                    alt={selected.nombre}
+                    className="w-full h-40 object-cover rounded-lg mb-3"
+                  />
+                )}
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2">
+                    <span className="text-gray-400 mt-0.5">📍</span>
+                    <span className="text-gray-700">{selected.direccion}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-gray-400 mt-0.5">📞</span>
+                    <span className="text-gray-700">{selected.contacto}</span>
+                  </div>
+                  {selected.horario && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-400 mt-0.5">🕐</span>
+                      <span className="text-gray-700">{selected.horario}</span>
+                    </div>
+                  )}
+                  {selected.que_reciben.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-400 mt-0.5">📦</span>
+                      <div className="flex flex-wrap gap-1">
+                        {selected.que_reciben.map((q) => (
+                          <span
+                            key={q}
+                            className="inline-block bg-red-50 text-red-700 text-xs px-2 py-0.5 rounded-full"
+                          >
+                            {q}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {selected.lat && selected.lng && (
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 block w-full bg-red-600 text-white py-3 rounded-lg text-center font-medium hover:bg-red-700 transition-colors"
+                  >
+                    🗺️ Cómo llegar
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <style jsx>{`
+              @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
+              }
+            `}</style>
           </>
         )}
       </div>
