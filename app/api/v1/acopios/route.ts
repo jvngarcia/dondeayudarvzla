@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   const tipo = searchParams.get("filter[tipo]");
   const estadoInsumos = searchParams.get("filter[estado_insumos]");
   const queReciben = searchParams.get("filter[que_reciben]");
+  const categoria = searchParams.get("filter[categoria]");
 
   let query = supabase
     .from("acopios")
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
   if (tipo) query = query.eq("tipo", tipo);
   if (estadoInsumos) query = query.eq("estado_insumos", estadoInsumos);
   if (queReciben) query = query.contains("que_reciben", [queReciben]);
+  if (categoria) query = query.eq("categoria", categoria);
 
   const { data, error } = await query;
 
@@ -44,6 +46,7 @@ export async function GET(request: NextRequest) {
       horario: item.horario,
       que_reciben: item.que_reciben,
       estado_insumos: item.estado_insumos,
+      categoria: item.categoria,
       foto_url: item.foto_url,
       created_at: item.created_at,
     },

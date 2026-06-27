@@ -39,7 +39,7 @@ const html = `<!DOCTYPE html>
   <main>
     <section>
       <h2>Base URL</h2>
-      <code>https://dondeayudarvzla.vercel.app/api/v1</code>
+      <code>https://dondeayudarvzla.com/api/v1</code>
     </section>
 
     <section>
@@ -63,7 +63,7 @@ const html = `<!DOCTYPE html>
         </table>
 
         <h3 style="margin-top: 1rem;">Ejemplo con curl</h3>
-        <pre>curl https://dondeayudarvzla.vercel.app/api/v1/acopios?filter[ciudad]=Caracas&filter[estado_insumos]=necesita</pre>
+        <pre>curl https://dondeayudarvzla.com/api/v1/acopios?filter[ciudad]=Caracas&filter[estado_insumos]=necesita</pre>
 
         <h3 style="margin-top: 1rem;">Respuesta (JSON:API)</h3>
         <pre>{

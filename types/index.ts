@@ -1,6 +1,7 @@
 export type TipoAcopio = "punto_fijo" | "punto_movil" | "organizacion";
 export type StatusAcopio = "pendiente" | "aprobado" | "rechazado";
 export type EstadoInsumos = "full" | "necesita";
+export type CategoriaAcopio = "refugio" | "centro_acopio";
 
 export interface Acopio {
   id: string;
@@ -18,6 +19,7 @@ export interface Acopio {
   fuente: string | null;
   status: StatusAcopio;
   estado_insumos: EstadoInsumos | null;
+  categoria: CategoriaAcopio;
   created_at: string;
 }
 
@@ -41,5 +43,6 @@ export interface ReportFormData {
   horario?: string;
   que_reciben: string[];
   estado_insumos: EstadoInsumos | null;
+  categoria: CategoriaAcopio;
   foto?: File | null;
 }
