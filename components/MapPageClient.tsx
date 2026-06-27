@@ -175,6 +175,7 @@ export default function MapPageClient() {
   const [filtroRecursoId, setFiltroRecursoId] = useState<string>("");
   const [filtroCategoriaLugar, setFiltroCategoriaLugar] = useState<string>("");
   const [filtroEstadoInsumos, setFiltroEstadoInsumos] = useState<string>("");
+  const [busquedaInput, setBusquedaInput] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [selected, setSelected] = useState<Acopio | null>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
@@ -190,11 +191,14 @@ export default function MapPageClient() {
         setAcopios(acopiosData);
         setRecursosList(recursosData);
         setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+      }
+    }
+
+    loadAll();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const filtrados = useMemo(() => {
@@ -219,8 +223,6 @@ export default function MapPageClient() {
     );
   }
 
-  if (loading) return <SkeletonMap />;
-
   return (
     <div className="h-full w-full flex flex-col">
       <div className="bg-white/80 backdrop-blur-md shadow-md p-2 z-[1000]">
@@ -231,8 +233,8 @@ export default function MapPageClient() {
             </span>
             <input
               type="text"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              value={busquedaInput}
+              onChange={(e) => setBusquedaInput(e.target.value)}
               placeholder="Buscar lugar..."
               className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400 transition-all bg-white/70 backdrop-blur-sm"
             />
@@ -242,6 +244,18 @@ export default function MapPageClient() {
 
       <div className="flex-1 relative">
         <LeafletMap acopios={filtrados} onMarkerClick={setSelected} />
+
+        {loading && acopios.length === 0 && (
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-[2000] flex items-center justify-center pointer-events-none transition-all duration-300">
+            <div className="bg-white/95 backdrop-blur-md px-5 py-3.5 rounded-2xl shadow-2xl border border-gray-100 flex items-center gap-3 animate-fade-in">
+              <svg className="animate-spin h-5 w-5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="text-sm font-semibold text-gray-800">Cargando puntos de ayuda...</span>
+            </div>
+          </div>
+        )}
 
         <Link
           href="/reportar"

@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
       )
     `)
     .eq("status", "aprobado")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(offsetVal, offsetVal + limitVal - 1);
 
   if (ciudad) {
     query = query.ilike("ciudad", ciudad);
