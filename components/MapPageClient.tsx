@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import type { Acopio, EstadoInsumos } from "@/types";
-import { SearchIcon, ReportIcon, LocationIcon, PhoneIcon, ClockIcon, PackageIcon, ExpandIcon } from "./icons";
+import { SearchIcon, ReportIcon, LocationIcon, PhoneIcon, ClockIcon, PackageIcon, ExpandIcon, NavigationIcon } from "./icons";
 
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), {
   ssr: false,
@@ -136,7 +136,8 @@ function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
           rel="noopener noreferrer"
           className="mt-4 block w-full bg-red-600 text-white py-3 rounded-lg text-center font-medium hover:bg-red-700 transition-colors"
         >
-          🗺️ Cómo llegar
+          <NavigationIcon className="w-5 h-5 inline-block mr-1.5 -mt-0.5" />
+          Cómo llegar
         </a>
       )}
     </div>
@@ -195,7 +196,7 @@ export default function MapPageClient() {
 
   return (
     <div className="h-full w-full flex flex-col">
-      <div className="bg-white/90 backdrop-blur-sm shadow-sm p-2 z-[1000]">
+      <div className="bg-white/80 backdrop-blur-md shadow-md p-2 z-[1000]">
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -206,7 +207,7 @@ export default function MapPageClient() {
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar lugar..."
-              className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400 transition-all"
+              className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400 transition-all bg-white/70 backdrop-blur-sm"
             />
           </div>
         </div>
@@ -241,7 +242,7 @@ export default function MapPageClient() {
             />
             <div className="md:hidden">
               <div
-                className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[1001] overflow-y-auto transition-all duration-300 ease-out ${
+                className={`absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg rounded-t-2xl shadow-2xl z-[1001] overflow-y-auto transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   sheetExpanded ? "max-h-[80vh]" : "max-h-[45vh]"
                 }`}
               >
@@ -257,7 +258,7 @@ export default function MapPageClient() {
                 <MarkerInfoContent acopio={selected} />
               </div>
             </div>
-            <div className="hidden md:block absolute top-4 left-4 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-2xl z-[1001] overflow-y-auto max-h-[calc(100vh-8rem)]">
+            <div className="hidden md:block absolute top-4 left-4 w-96 max-w-[calc(100vw-2rem)] bg-white/90 backdrop-blur-lg rounded-xl shadow-2xl z-[1001] overflow-y-auto max-h-[calc(100vh-8rem)]">
               <div className="flex justify-end pt-2 pr-2">
                 <button
                   onClick={() => { setSelected(null); setSheetExpanded(false); }}
@@ -275,7 +276,7 @@ export default function MapPageClient() {
         )}
       </div>
 
-      <div className="bg-white border-t border-gray-200 px-2 py-2 z-[1000]">
+      <div className="bg-white/80 backdrop-blur-md border-t border-gray-200/60 px-2 py-2 z-[1000]">
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
           {TIPOS.map((t) => (
             <button
