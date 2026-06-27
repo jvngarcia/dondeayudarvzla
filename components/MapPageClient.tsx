@@ -2,7 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import type { Acopio, EstadoInsumos } from "@/types";
+import { SearchIcon, ReportIcon, LocationIcon, PhoneIcon, ClockIcon, PackageIcon, ExpandIcon } from "./icons";
 
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), {
   ssr: false,
@@ -66,6 +68,81 @@ const EstadoInsumosBadge = ({ estado }: { estado: EstadoInsumos | null }) => {
   );
 };
 
+function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
+  return (
+    <div className="pb-4">
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex-1">
+          <h3 className="font-bold text-lg leading-tight">{acopio.nombre}</h3>
+          <div className="flex gap-1.5 mt-1">
+            <TipoBadge tipo={acopio.tipo} />
+            <EstadoInsumosBadge estado={acopio.estado_insumos} />
+          </div>
+        </div>
+      </div>
+
+      {acopio.foto_url && (
+        <img
+          src={acopio.foto_url}
+          alt={acopio.nombre}
+          className="w-full h-40 object-cover rounded-lg mb-3"
+        />
+      )}
+
+      <div className="space-y-2.5 text-sm">
+        <div className="flex items-start gap-2.5">
+          <span className="text-gray-400 mt-0.5 shrink-0">
+            <LocationIcon className="w-4 h-4" />
+          </span>
+          <span className="text-gray-700">{acopio.direccion}</span>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <span className="text-gray-400 mt-0.5 shrink-0">
+            <PhoneIcon className="w-4 h-4" />
+          </span>
+          <span className="text-gray-700">{acopio.contacto}</span>
+        </div>
+        {acopio.horario && (
+          <div className="flex items-start gap-2.5">
+            <span className="text-gray-400 mt-0.5 shrink-0">
+              <ClockIcon className="w-4 h-4" />
+            </span>
+            <span className="text-gray-700">{acopio.horario}</span>
+          </div>
+        )}
+        {acopio.que_reciben.length > 0 && (
+          <div className="flex items-start gap-2.5">
+            <span className="text-gray-400 mt-0.5 shrink-0">
+              <PackageIcon className="w-4 h-4" />
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {acopio.que_reciben.map((q) => (
+                <span
+                  key={q}
+                  className="inline-block bg-red-50 text-red-700 text-xs px-2 py-0.5 rounded-full"
+                >
+                  {q}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {acopio.lat && acopio.lng && (
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&destination=${acopio.lat},${acopio.lng}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 block w-full bg-red-600 text-white py-3 rounded-lg text-center font-medium hover:bg-red-700 transition-colors"
+        >
+          🗺️ Cómo llegar
+        </a>
+      )}
+    </div>
+  );
+}
+
 export default function MapPageClient() {
   const [acopios, setAcopios] = useState<Acopio[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +152,7 @@ export default function MapPageClient() {
   const [filtroEstadoInsumos, setFiltroEstadoInsumos] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
   const [selected, setSelected] = useState<Acopio | null>(null);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
 
   useEffect(() => {
     fetch("/api/acopios")
@@ -117,16 +195,18 @@ export default function MapPageClient() {
 
   return (
     <div className="h-full w-full flex flex-col">
-      <div className="bg-white shadow-sm p-2 z-[1000]">
+      <div className="bg-white/90 backdrop-blur-sm shadow-sm p-2 z-[1000]">
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <SearchIcon className="w-4 h-4" />
+            </span>
             <input
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar lugar..."
-              className="w-full border rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400 transition-shadow"
+              className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400 transition-all"
             />
           </div>
         </div>
@@ -135,12 +215,17 @@ export default function MapPageClient() {
       <div className="flex-1 relative">
         <LeafletMap acopios={filtrados} onMarkerClick={setSelected} />
 
-        <a
+        <Link
           href="/reportar"
-          className="absolute bottom-20 right-4 bg-red-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-3xl z-[1000] hover:bg-red-700 active:bg-red-800 transition-transform active:scale-95"
+          className="absolute bottom-20 right-4 z-[1000] flex flex-col items-center gap-0.5 animate-fade-in"
         >
-          +
-        </a>
+          <span className="bg-red-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-red-700 active:bg-red-800 transition-all active:scale-95">
+            <ReportIcon className="w-5 h-5" />
+          </span>
+          <span className="text-[10px] font-semibold text-red-600 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">
+            Reportar
+          </span>
+        </Link>
 
         {filtrados.length === 0 && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded shadow z-[1000] text-sm text-gray-600">
@@ -152,88 +237,40 @@ export default function MapPageClient() {
           <>
             <div
               className="absolute inset-0 z-[1000]"
-              onClick={() => setSelected(null)}
+              onClick={() => { setSelected(null); setSheetExpanded(false); }}
             />
-            <div
-              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[1001] animate-slide-up max-h-[50vh] overflow-y-auto"
-              style={{ animation: "slideUp 0.2s ease-out" }}
-            >
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg leading-tight">{selected.nombre}</h3>
-                    <div className="flex gap-1.5 mt-1">
-                      <TipoBadge tipo={selected.tipo} />
-                      <EstadoInsumosBadge estado={selected.estado_insumos} />
-                    </div>
+            <div className="md:hidden">
+              <div
+                className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[1001] overflow-y-auto transition-all duration-300 ease-out ${
+                  sheetExpanded ? "max-h-[80vh]" : "max-h-[45vh]"
+                }`}
+              >
+                <div className="sticky top-0 bg-white rounded-t-2xl z-10">
+                  <div className="flex justify-center pt-2 pb-1">
+                    <button
+                      onClick={() => setSheetExpanded(!sheetExpanded)}
+                      className="w-10 h-1.5 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors cursor-pointer"
+                      aria-label={sheetExpanded ? "Contraer" : "Expandir"}
+                    />
                   </div>
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="text-gray-400 hover:text-gray-600 p-1"
-                  >
-                    ✕
-                  </button>
                 </div>
-
-                {selected.foto_url && (
-                  <img
-                    src={selected.foto_url}
-                    alt={selected.nombre}
-                    className="w-full h-40 object-cover rounded-lg mb-3"
-                  />
-                )}
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start gap-2">
-                    <span className="text-gray-400 mt-0.5">📍</span>
-                    <span className="text-gray-700">{selected.direccion}</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-gray-400 mt-0.5">📞</span>
-                    <span className="text-gray-700">{selected.contacto}</span>
-                  </div>
-                  {selected.horario && (
-                    <div className="flex items-start gap-2">
-                      <span className="text-gray-400 mt-0.5">🕐</span>
-                      <span className="text-gray-700">{selected.horario}</span>
-                    </div>
-                  )}
-                  {selected.que_reciben.length > 0 && (
-                    <div className="flex items-start gap-2">
-                      <span className="text-gray-400 mt-0.5">📦</span>
-                      <div className="flex flex-wrap gap-1">
-                        {selected.que_reciben.map((q) => (
-                          <span
-                            key={q}
-                            className="inline-block bg-red-50 text-red-700 text-xs px-2 py-0.5 rounded-full"
-                          >
-                            {q}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {selected.lat && selected.lng && (
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 block w-full bg-red-600 text-white py-3 rounded-lg text-center font-medium hover:bg-red-700 transition-colors"
-                  >
-                    🗺️ Cómo llegar
-                  </a>
-                )}
+                <MarkerInfoContent acopio={selected} />
               </div>
             </div>
-
-            <style jsx>{`
-              @keyframes slideUp {
-                from { transform: translateY(100%); }
-                to { transform: translateY(0); }
-              }
-            `}</style>
+            <div className="hidden md:block absolute top-4 left-4 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-2xl z-[1001] overflow-y-auto max-h-[calc(100vh-8rem)]">
+              <div className="flex justify-end pt-2 pr-2">
+                <button
+                  onClick={() => { setSelected(null); setSheetExpanded(false); }}
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                  aria-label="Cerrar"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="px-4 pb-4 -mt-1">
+                <MarkerInfoContent acopio={selected} />
+              </div>
+            </div>
           </>
         )}
       </div>

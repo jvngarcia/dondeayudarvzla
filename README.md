@@ -49,7 +49,7 @@ El proyecto expone una API REST con formato [JSON:API](https://jsonapi.org/).
 - **Documentación interactiva:** `GET /api/v1/docs`
 - **API existente:** `GET /api/acopios`
 
-Consulta la [documentación completa](https://dondeayudarvzla.vercel.app/api/v1/docs) para más detalles.
+Consulta la [documentación completa](https://dondeayudarvzla.com/api/v1/docs) para más detalles.
 
 ## Contribuir
 
