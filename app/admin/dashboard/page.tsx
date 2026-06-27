@@ -84,6 +84,8 @@ export default function AdminDashboardPage() {
                     <h3 className="font-bold text-lg">{acopio.nombre}</h3>
                     <p className="text-gray-600 text-sm">
                       {acopio.tipo === "punto_fijo" ? "Punto fijo" : acopio.tipo === "punto_movil" ? "Punto móvil" : "Organización"}
+                      {" | "}
+                      {acopio.categoria === "refugio" ? "Refugio" : "Centro de Acopio"}
                     </p>
                     <p className="text-gray-600 text-sm mt-1">
                       <span className="font-medium">Dirección:</span> {acopio.direccion}

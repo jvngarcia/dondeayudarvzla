@@ -46,10 +46,12 @@ export async function POST(request: NextRequest) {
   const contacto = formData.get("contacto") as string;
   const horario = formData.get("horario") as string | null;
   const queRecibenRaw = formData.get("que_reciben") as string;
+  const estadoInsumos = formData.get("estado_insumos") as string | null;
+  const categoria = formData.get("categoria") as string;
   const foto = formData.get("foto") as File | null;
 
-  if (!nombre || !tipo || !direccion || !contacto) {
-    return NextResponse.json({ error: "Campos obligatorios: nombre, tipo, dirección, contacto" }, { status: 400 });
+  if (!nombre || !tipo || !direccion || !contacto || !categoria) {
+    return NextResponse.json({ error: "Campos obligatorios: nombre, tipo, dirección, contacto, categoría" }, { status: 400 });
   }
 
   const queReciben = queRecibenRaw ? queRecibenRaw.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
@@ -80,6 +82,8 @@ export async function POST(request: NextRequest) {
     contacto,
     horario: horario || null,
     que_reciben: queReciben,
+    estado_insumos: estadoInsumos || null,
+    categoria: categoria || "centro_acopio",
     foto_url: fotoUrl,
     lat: coords?.lat || null,
     lng: coords?.lng || null,
