@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import type { TipoAcopio } from "@/types";
@@ -14,6 +14,18 @@ export default function ReportarPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(false);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const renderedRef = useRef(false);
+
+  useEffect(() => {
+    if (!turnstileReady || !turnstileRef.current || renderedRef.current) return;
+    renderedRef.current = true;
+    (window as any).turnstile.render(turnstileRef.current, {
+      sitekey: TURNSTILE_SITE_KEY,
+      callback: (token: string) => setTurnstileToken(token),
+    });
+  }, [turnstileReady]);
   const [form, setForm] = useState({
     nombre: "",
     tipo: "punto_fijo" as TipoAcopio,
@@ -110,6 +122,7 @@ export default function ReportarPage() {
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js"
         strategy="afterInteractive"
+        onLoad={() => setTurnstileReady(true)}
       />
 
       <div className="max-w-lg mx-auto p-4">
@@ -258,11 +271,7 @@ export default function ReportarPage() {
             </label>
           </div>
 
-          <div
-            className="cf-turnstile"
-            data-sitekey={TURNSTILE_SITE_KEY}
-            data-callback={(token: string) => setTurnstileToken(token)}
-          />
+          <div ref={turnstileRef} />
 
           {error && (
             <p className="text-red-600 text-sm bg-red-50 p-3 rounded-xl flex items-center gap-2">
