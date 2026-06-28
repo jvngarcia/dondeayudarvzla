@@ -191,14 +191,7 @@ export default function MapPageClient() {
         setAcopios(acopiosData);
         setRecursosList(recursosData);
         setLoading(false);
-      }
-    }
-
-    loadAll();
-
-    return () => {
-      cancelled = true;
-    };
+      })
   }, []);
 
   const filtrados = useMemo(() => {
