@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
+const MAP_COLUMNS = "id, nombre, tipo, categoria, lat, lng, ciudad, estado, direccion, contacto, horario, foto_url, estado_insumos, recursos:acopio_recursos(recurso:recurso_id(*))";
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const ciudad = searchParams.get("ciudad");
@@ -26,13 +28,17 @@ export async function GET(request: NextRequest) {
     }
 
     if (!recursoIds || recursoIds.length === 0) {
-      return NextResponse.json([]);
+      return NextResponse.json([], {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        },
+      });
     }
   }
 
   let query = supabaseAdmin
     .from("acopios")
-    .select("*")
+    .select(MAP_COLUMNS)
     .eq("status", "aprobado")
     .order("created_at", { ascending: false });
 
@@ -50,43 +56,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const acopioIds = (acopios || []).map((a) => a.id);
-  let recursosPorAcopio: Record<string, unknown[]> = {};
-
-  if (acopioIds.length > 0) {
-    const { data: relaciones } = await supabaseAdmin
-      .from("acopio_recursos")
-      .select("acopio_id, recurso_id")
-      .in("acopio_id", acopioIds);
-
-    if (relaciones && relaciones.length > 0) {
-      const todosRecursoIds = [...new Set(relaciones.map((r) => r.recurso_id))];
-
-      const { data: todosRecursos } = await supabaseAdmin
-        .from("recursos")
-        .select("*")
-        .in("id", todosRecursoIds);
-
-      const recursoMap: Record<string, unknown> = {};
-      if (todosRecursos) {
-        for (const r of todosRecursos) {
-          recursoMap[r.id] = r;
-        }
-      }
-
-      for (const rel of relaciones) {
-        if (!recursosPorAcopio[rel.acopio_id]) recursosPorAcopio[rel.acopio_id] = [];
-        if (recursoMap[rel.recurso_id]) {
-          recursosPorAcopio[rel.acopio_id].push(recursoMap[rel.recurso_id]);
-        }
-      }
-    }
-  }
-
-  const formatted = (acopios || []).map((item) => ({
+  const formatted = (acopios || []).map((item: any) => ({
     ...item,
-    recursos: recursosPorAcopio[item.id] || [],
+    recursos: (item.recursos || []).map((r: any) => r.recurso),
   }));
 
-  return NextResponse.json(formatted);
+  return NextResponse.json(formatted, {
+    headers: {
+      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+    },
+  });
 }

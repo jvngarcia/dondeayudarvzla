@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -124,7 +125,9 @@ export default function AdminDashboardPage() {
                     </p>
                   </div>
                   {acopio.foto_url && (
-                    <img src={acopio.foto_url} alt="" className="w-24 h-24 object-cover rounded ml-4" />
+                    <div className="relative w-24 h-24 ml-4 shrink-0">
+                      <Image src={acopio.foto_url} alt="" fill className="object-cover rounded" sizes="96px" />
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-2 mt-4">

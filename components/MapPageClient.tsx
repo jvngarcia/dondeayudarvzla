@@ -1,8 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState, useMemo } from "react";
+import Image from "next/image";
+import { useState, useMemo } from "react";
+import useSWR from "swr";
 import Link from "next/link";
+import { useDebounce } from "@/lib/useDebounce";
 import type { Acopio, EstadoInsumos } from "@/types";
 import { SearchIcon, ReportIcon, LocationIcon, PhoneIcon, ClockIcon, PackageIcon, ExpandIcon, NavigationIcon } from "./icons";
 import UpdateAcopioButton from "./UpdateAcopioButton";
@@ -21,6 +24,12 @@ const TIPOS = [
 ] as const;
 
 type RecursoSimple = { id: string; nombre: string };
+
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error("Error al cargar datos");
+    return r.json();
+  });
 
 function SkeletonMap() {
   return (
@@ -100,11 +109,15 @@ function MarkerInfoContent({ acopio, onUpdateClick }: { acopio: Acopio; onUpdate
       </div>
 
       {acopio.foto_url && (
-        <img
-          src={acopio.foto_url}
-          alt={acopio.nombre}
-          className="w-full h-40 object-cover rounded-lg mb-3"
-        />
+        <div className="relative w-full h-40 mb-3">
+          <Image
+            src={acopio.foto_url}
+            alt={acopio.nombre}
+            fill
+            className="object-cover rounded-lg"
+            sizes="(max-width: 768px) 100vw, 384px"
+          />
+        </div>
       )}
 
       <div className="space-y-2.5 text-sm">
@@ -167,35 +180,39 @@ function MarkerInfoContent({ acopio, onUpdateClick }: { acopio: Acopio; onUpdate
   );
 }
 
-export default function MapPageClient() {
-  const [acopios, setAcopios] = useState<Acopio[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface MapPageClientProps {
+  initialAcopios?: Acopio[];
+  initialRecursos?: RecursoSimple[];
+}
+
+export default function MapPageClient({ initialAcopios, initialRecursos }: MapPageClientProps) {
   const [filtroTipo, setFiltroTipo] = useState<string>("");
   const [filtroRecursoId, setFiltroRecursoId] = useState<string>("");
   const [filtroCategoriaLugar, setFiltroCategoriaLugar] = useState<string>("");
   const [filtroEstadoInsumos, setFiltroEstadoInsumos] = useState<string>("");
   const [busquedaInput, setBusquedaInput] = useState("");
-  const [busqueda, setBusqueda] = useState("");
+  const busqueda = useDebounce(busquedaInput, 300);
   const [selected, setSelected] = useState<Acopio | null>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [showUpdateSheet, setShowUpdateSheet] = useState(false);
-  const [recursosList, setRecursosList] = useState<RecursoSimple[]>([]);
 
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/acopios").then((r) => { if (!r.ok) throw new Error("Error al cargar datos"); return r.json(); }),
-      fetch("/api/recursos").then((r) => r.json()),
-    ])
-      .then(([acopiosData, recursosData]) => {
-        setAcopios(acopiosData);
-        setRecursosList(recursosData);
-        setLoading(false);
-      })
-  }, []);
+  const { data: acopios, error, isLoading } = useSWR<Acopio[]>("/api/acopios", fetcher, {
+    fallbackData: initialAcopios,
+    revalidateOnFocus: false,
+    refreshInterval: 300000,
+  });
+
+  const { data: recursosSWR } = useSWR<RecursoSimple[]>(
+    initialRecursos ? null : "/api/recursos",
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
+  const recursosList = initialRecursos || recursosSWR || [];
 
   const filtrados = useMemo(() => {
-    return acopios.filter((a) => {
+    const list = acopios || [];
+    return list.filter((a) => {
       if (filtroTipo && a.tipo !== filtroTipo) return false;
       if (filtroRecursoId && !(a.recursos || []).some((r) => r.id === filtroRecursoId)) return false;
       if (filtroCategoriaLugar && a.categoria !== filtroCategoriaLugar) return false;
@@ -210,7 +227,7 @@ export default function MapPageClient() {
       <div className="h-full w-full flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <p className="text-red-500 text-lg mb-2">Error al cargar los datos</p>
-          <p className="text-gray-500 text-sm">{error}</p>
+          <p className="text-gray-500 text-sm">{error.message}</p>
         </div>
       </div>
     );
@@ -238,7 +255,7 @@ export default function MapPageClient() {
       <div className="flex-1 relative">
         <LeafletMap acopios={filtrados} onMarkerClick={setSelected} />
 
-        {loading && acopios.length === 0 && (
+        {isLoading && (!acopios || acopios.length === 0) && (
           <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-[2000] flex items-center justify-center pointer-events-none transition-all duration-300">
             <div className="bg-white/95 backdrop-blur-md px-5 py-3.5 rounded-2xl shadow-2xl border border-gray-100 flex items-center gap-3 animate-fade-in">
               <svg className="animate-spin h-5 w-5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -262,7 +279,7 @@ export default function MapPageClient() {
           </span>
         </Link>
 
-        {filtrados.length === 0 && (
+        {filtrados.length === 0 && !isLoading && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded shadow z-[1000] text-sm text-gray-600">
             No hay lugares con esos filtros
           </div>
@@ -314,9 +331,6 @@ export default function MapPageClient() {
             onClose={() => setShowUpdateSheet(false)}
             onSaved={(updated) => {
               setSelected(updated);
-              setAcopios((prev) =>
-                prev.map((a) => (a.id === updated.id ? updated : a))
-              );
             }}
           />
         )}
