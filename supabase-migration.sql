@@ -52,3 +52,8 @@ alter table acopios add column if not exists estado_insumos text check (estado_i
 
 -- Migración: Agregar columna categoria (refugio o centro de acopio)
 alter table acopios add column if not exists categoria text not null default 'centro_acopio' check (categoria in ('refugio', 'centro_acopio'));
+
+-- Índices compuestos para consultas de filtro en el mapa
+create index if not exists idx_acopios_status_categoria on acopios (status, categoria);
+create index if not exists idx_acopios_status_tipo on acopios (status, tipo);
+create index if not exists idx_acopios_status_estado_insumos on acopios (status, estado_insumos);

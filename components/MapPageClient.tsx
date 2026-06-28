@@ -1,10 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState, useMemo } from "react";
+import Image from "next/image";
+import { useState, useMemo } from "react";
+import useSWR from "swr";
 import Link from "next/link";
+import { useDebounce } from "@/lib/useDebounce";
 import type { Acopio, EstadoInsumos } from "@/types";
 import { SearchIcon, ReportIcon, LocationIcon, PhoneIcon, ClockIcon, PackageIcon, ExpandIcon, NavigationIcon } from "./icons";
+import UpdateAcopioButton from "./UpdateAcopioButton";
+import UpdateAcopioSheet from "./UpdateAcopioSheet";
 
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), {
   ssr: false,
@@ -18,7 +23,13 @@ const TIPOS = [
   { value: "organizacion", label: "Org", color: "bg-green-500" },
 ] as const;
 
-const CATEGORIAS = ["agua", "comida", "ropa", "medicinas", "higiene", "cobijas", "voluntarios", "otros"];
+type RecursoSimple = { id: string; nombre: string };
+
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error("Error al cargar datos");
+    return r.json();
+  });
 
 function SkeletonMap() {
   return (
@@ -83,7 +94,7 @@ const EstadoInsumosBadge = ({ estado }: { estado: EstadoInsumos | null }) => {
   );
 };
 
-function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
+function MarkerInfoContent({ acopio, onUpdateClick }: { acopio: Acopio; onUpdateClick?: () => void }) {
   return (
     <div className="pb-4">
       <div className="flex justify-between items-start mb-3">
@@ -98,11 +109,15 @@ function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
       </div>
 
       {acopio.foto_url && (
-        <img
-          src={acopio.foto_url}
-          alt={acopio.nombre}
-          className="w-full h-40 object-cover rounded-lg mb-3"
-        />
+        <div className="relative w-full h-40 mb-3">
+          <Image
+            src={acopio.foto_url}
+            alt={acopio.nombre}
+            fill
+            className="object-cover rounded-lg"
+            sizes="(max-width: 768px) 100vw, 384px"
+          />
+        </div>
       )}
 
       <div className="space-y-2.5 text-sm">
@@ -126,23 +141,25 @@ function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
             <span className="text-gray-700">{acopio.horario}</span>
           </div>
         )}
-        {acopio.que_reciben.length > 0 && (
-          <div className="flex items-start gap-2.5">
-            <span className="text-gray-400 mt-0.5 shrink-0">
-              <PackageIcon className="w-4 h-4" />
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {acopio.que_reciben.map((q) => (
+        <div className="flex items-start gap-2.5">
+          <span className="text-gray-400 mt-0.5 shrink-0">
+            <PackageIcon className="w-4 h-4" />
+          </span>
+          <div className="flex flex-wrap gap-1">
+            {acopio.recursos && acopio.recursos.length > 0 ? (
+              acopio.recursos.map((r) => (
                 <span
-                  key={q}
+                  key={r.id}
                   className="inline-block bg-red-50 text-red-700 text-xs px-2 py-0.5 rounded-full"
                 >
-                  {q}
+                  {r.nombre}
                 </span>
-              ))}
-            </div>
+              ))
+            ) : (
+              <span className="text-gray-400 text-xs italic">No necesita nada</span>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {acopio.lat && acopio.lng && (
@@ -156,113 +173,61 @@ function MarkerInfoContent({ acopio }: { acopio: Acopio }) {
           Cómo llegar
         </a>
       )}
+      {onUpdateClick && (
+        <UpdateAcopioButton onClick={onUpdateClick} />
+      )}
     </div>
   );
 }
 
-export default function MapPageClient() {
-  const [acopios, setAcopios] = useState<Acopio[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface MapPageClientProps {
+  initialAcopios?: Acopio[];
+  initialRecursos?: RecursoSimple[];
+}
+
+export default function MapPageClient({ initialAcopios, initialRecursos }: MapPageClientProps) {
   const [filtroTipo, setFiltroTipo] = useState<string>("");
-  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
+  const [filtroRecursoId, setFiltroRecursoId] = useState<string>("");
   const [filtroCategoriaLugar, setFiltroCategoriaLugar] = useState<string>("");
   const [filtroEstadoInsumos, setFiltroEstadoInsumos] = useState<string>("");
   const [busquedaInput, setBusquedaInput] = useState("");
-  const [busqueda, setBusqueda] = useState("");
+  const busqueda = useDebounce(busquedaInput, 300);
   const [selected, setSelected] = useState<Acopio | null>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [showUpdateSheet, setShowUpdateSheet] = useState(false);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setBusqueda(busquedaInput);
-    }, 300);
+  const { data: acopios, error, isLoading } = useSWR<Acopio[]>("/api/acopios", fetcher, {
+    fallbackData: initialAcopios,
+    revalidateOnFocus: false,
+    refreshInterval: 300000,
+  });
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [busquedaInput]);
+  const { data: recursosSWR } = useSWR<RecursoSimple[]>(
+    initialRecursos ? null : "/api/recursos",
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    const PAGE_SIZE = 50;
-
-    setAcopios([]);
-    setLoading(true);
-    setError(null);
-
-    async function loadAll() {
-      let offset = 0;
-      let accumulatedData: Acopio[] = [];
-      let lasthLength = -1; // Para detectar si nos estancamos
-
-      while (!cancelled) {
-        try {
-          const res = await fetch(`/api/acopios?limit=${PAGE_SIZE}&offset=${offset}`);
-          if (!res.ok) throw new Error(`Error de servidor: ${res.status}`);
-          
-          const { data } = await res.json();
-
-          // 1. Si no hay datos, o la petición fue cancelada, salimos
-          if (cancelled || !data || data.length === 0) {
-            break;
-          }
-
-          // 2. Control de bucle infinito: Si el backend nos devuelve exactamente lo mismo 
-          // o no avanza en el offset, rompemos para evitar congelar la app.
-          if (data.length === lasthLength && data[0]?.id === accumulatedData[accumulatedData.length - data.length]?.id) {
-            console.warn("Se detectó una respuesta repetida del backend. Rompiendo paginación.");
-            break;
-          }
-
-          accumulatedData = [...accumulatedData, ...data];
-          offset += data.length;
-          lasthLength = data.length;
-
-          // 3. Si llegaron menos registros que el tamaño de página, significa que ya es la última página
-          if (data.length < PAGE_SIZE) {
-            break;
-          }
-        } catch (err: unknown) {
-          if (!cancelled) {
-            setError(err instanceof Error ? err.message : "Error desconocido al obtener datos");
-          }
-          break;
-        }
-      }
-
-      // Al salir del bucle (cuando ya tenemos TODOS los registros en memoria)
-      // actualizamos la interfaz UNA SOLA VEZ.
-      if (!cancelled) {
-        setAcopios(accumulatedData);
-        setLoading(false);
-      }
-    }
-
-    loadAll();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const recursosList = initialRecursos || recursosSWR || [];
 
   const filtrados = useMemo(() => {
-    return acopios.filter((a) => {
+    const list = acopios || [];
+    return list.filter((a) => {
       if (filtroTipo && a.tipo !== filtroTipo) return false;
-      if (filtroCategoria && !a.que_reciben.includes(filtroCategoria)) return false;
+      if (filtroRecursoId && !(a.recursos || []).some((r) => r.id === filtroRecursoId)) return false;
       if (filtroCategoriaLugar && a.categoria !== filtroCategoriaLugar) return false;
       if (filtroEstadoInsumos && a.estado_insumos !== filtroEstadoInsumos) return false;
       if (busqueda && !a.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false;
       return true;
     });
-  }, [acopios, filtroTipo, filtroCategoria, filtroCategoriaLugar, filtroEstadoInsumos, busqueda]);
+  }, [acopios, filtroTipo, filtroRecursoId, filtroCategoriaLugar, filtroEstadoInsumos, busqueda]);
 
   if (error) {
     return (
       <div className="h-full w-full flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <p className="text-red-500 text-lg mb-2">Error al cargar los datos</p>
-          <p className="text-gray-500 text-sm">{error}</p>
+          <p className="text-gray-500 text-sm">{error.message}</p>
         </div>
       </div>
     );
@@ -290,7 +255,7 @@ export default function MapPageClient() {
       <div className="flex-1 relative">
         <LeafletMap acopios={filtrados} onMarkerClick={setSelected} />
 
-        {loading && acopios.length === 0 && (
+        {isLoading && (!acopios || acopios.length === 0) && (
           <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-[2000] flex items-center justify-center pointer-events-none transition-all duration-300">
             <div className="bg-white/95 backdrop-blur-md px-5 py-3.5 rounded-2xl shadow-2xl border border-gray-100 flex items-center gap-3 animate-fade-in">
               <svg className="animate-spin h-5 w-5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -314,7 +279,7 @@ export default function MapPageClient() {
           </span>
         </Link>
 
-        {filtrados.length === 0 && (
+        {filtrados.length === 0 && !isLoading && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded shadow z-[1000] text-sm text-gray-600">
             No hay lugares con esos filtros
           </div>
@@ -341,7 +306,7 @@ export default function MapPageClient() {
                     />
                   </div>
                 </div>
-                <MarkerInfoContent acopio={selected} />
+                <MarkerInfoContent acopio={selected} onUpdateClick={() => setShowUpdateSheet(true)} />
               </div>
             </div>
             <div className="hidden md:block absolute top-4 left-4 w-96 max-w-[calc(100vw-2rem)] bg-white/90 backdrop-blur-lg rounded-xl shadow-2xl z-[1001] overflow-y-auto max-h-[calc(100vh-8rem)]">
@@ -355,10 +320,19 @@ export default function MapPageClient() {
                 </button>
               </div>
               <div className="px-4 pb-4 -mt-1">
-                <MarkerInfoContent acopio={selected} />
+                <MarkerInfoContent acopio={selected} onUpdateClick={() => setShowUpdateSheet(true)} />
               </div>
             </div>
           </>
+        )}
+        {showUpdateSheet && selected && (
+          <UpdateAcopioSheet
+            acopio={selected}
+            onClose={() => setShowUpdateSheet(false)}
+            onSaved={(updated) => {
+              setSelected(updated);
+            }}
+          />
         )}
       </div>
 
@@ -396,17 +370,17 @@ export default function MapPageClient() {
             </button>
           ))}
           <span className="w-px bg-gray-300 mx-1" />
-          {CATEGORIAS.map((cat) => (
+          {recursosList.map((r) => (
             <button
-              key={cat}
-              onClick={() => setFiltroCategoria(filtroCategoria === cat ? "" : cat)}
+              key={r.id}
+              onClick={() => setFiltroRecursoId(filtroRecursoId === r.id ? "" : r.id)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                filtroCategoria === cat
+                filtroRecursoId === r.id
                   ? "bg-red-600 text-white"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              {r.nombre}
             </button>
           ))}
           <span className="w-px bg-gray-300 mx-1" />

@@ -58,7 +58,7 @@ const html = `<!DOCTYPE html>
             <tr><td><code>filter[ciudad]</code></td><td>string</td><td>Filtrar por ciudad (búsqueda case-insensitive)</td><td><code>?filter[ciudad]=Caracas</code></td></tr>
             <tr><td><code>filter[tipo]</code></td><td>string</td><td>Filtrar por tipo: <code>punto_fijo</code>, <code>punto_movil</code>, <code>organizacion</code></td><td><code>?filter[tipo]=organizacion</code></td></tr>
             <tr><td><code>filter[estado_insumos]</code></td><td>string</td><td>Filtrar por estado de insumos: <code>full</code>, <code>necesita</code></td><td><code>?filter[estado_insumos]=necesita</code></td></tr>
-            <tr><td><code>filter[que_reciben]</code></td><td>string</td><td>Filtrar por categoría de insumo que reciben</td><td><code>?filter[que_reciben]=comida</code></td></tr>
+            <tr><td><code>filter[recurso]</code></td><td>string</td><td>Filtrar por nombre de recurso que necesitan</td><td><code>?filter[recurso]=agua</code></td></tr>
           </tbody>
         </table>
 
@@ -81,7 +81,10 @@ const html = `<!DOCTYPE html>
         "lng": -66.85,
         "contacto": "(0212) 555-1234",
         "horario": "8am - 6pm",
-        "que_reciben": ["medicinas", "voluntarios"],
+        "recursos": [
+          { "id": "uuid-recurso-1", "nombre": "Medicinas", "descripcion": null, "categoria": "medico" },
+          { "id": "uuid-recurso-2", "nombre": "Voluntarios", "descripcion": null, "categoria": "otro" }
+        ],
         "estado_insumos": "necesita",
         "foto_url": null,
         "created_at": "2026-06-26T00:00:00Z"
@@ -114,7 +117,7 @@ const html = `<!DOCTYPE html>
           <tr><td><code>lng</code></td><td>float or null</td><td>Longitud para el mapa</td></tr>
           <tr><td><code>contacto</code></td><td>string</td><td>Información de contacto</td></tr>
           <tr><td><code>horario</code></td><td>string or null</td><td>Horario de atención</td></tr>
-          <tr><td><code>que_reciben</code></td><td>string[]</td><td>Lista de categorías de insumos que reciben</td></tr>
+          <tr><td><code>recursos</code></td><td>object[]</td><td>Lista de recursos que necesitan (con id, nombre, descripcion, categoria)</td></tr>
           <tr><td><code>estado_insumos</code></td><td>string or null</td><td><code>full</code> (abastecido) o <code>necesita</code> (necesita insumos)</td></tr>
           <tr><td><code>foto_url</code></td><td>string or null</td><td>URL de la foto del lugar</td></tr>
           <tr><td><code>created_at</code></td><td>string (ISO)</td><td>Fecha de creación</td></tr>
