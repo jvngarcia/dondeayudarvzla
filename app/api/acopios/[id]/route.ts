@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function PATCH(
@@ -8,13 +7,13 @@ export async function PATCH(
 ) {
   const { id } = params;
   const body = await request.json();
-  const { recursos, contacto, horario, edit_token } = body;
+  const { recursos: recursoIdsBody, contacto, horario, edit_token } = body;
 
   if (!edit_token) {
     return NextResponse.json({ error: "Token de edición requerido" }, { status: 401 });
   }
 
-  const { data: acopio, error: fetchError } = await supabase
+  const { data: acopio, error: fetchError } = await supabaseAdmin
     .from("acopios")
     .select("edit_token, status")
     .eq("id", id)
@@ -43,14 +42,14 @@ export async function PATCH(
     }
   }
 
-  if (recursos !== undefined) {
+  if (recursoIdsBody !== undefined) {
     await supabaseAdmin
       .from("acopio_recursos")
       .delete()
       .eq("acopio_id", id);
 
-    if (recursos.length > 0) {
-      const inserts = recursos.map((recursoId: string) => ({
+    if (recursoIdsBody.length > 0) {
+      const inserts = recursoIdsBody.map((recursoId: string) => ({
         acopio_id: id,
         recurso_id: recursoId,
       }));
@@ -67,12 +66,7 @@ export async function PATCH(
 
   const { data: updated, error: selectError } = await supabaseAdmin
     .from("acopios")
-    .select(`
-      *,
-      recursos:acopio_recursos(
-        recurso:recurso_id(*)
-      )
-    `)
+    .select("*")
     .eq("id", id)
     .single();
 
@@ -80,10 +74,23 @@ export async function PATCH(
     return NextResponse.json({ error: selectError.message }, { status: 500 });
   }
 
-  const formatted = {
-    ...updated,
-    recursos: (updated.recursos || []).map((r: { recurso: unknown }) => r.recurso),
-  };
+  const { data: relaciones } = await supabaseAdmin
+    .from("acopio_recursos")
+    .select("recurso_id")
+    .eq("acopio_id", id);
 
-  return NextResponse.json(formatted);
+  let recursos: unknown[] = [];
+  if (relaciones && relaciones.length > 0) {
+    const recursoIds = relaciones.map((r: any) => r.recurso_id);
+    const { data: recursosData } = await supabaseAdmin
+      .from("recursos")
+      .select("*")
+      .in("id", recursoIds);
+    if (recursosData) recursos = recursosData;
+  }
+
+  return NextResponse.json({
+    ...updated,
+    recursos,
+  });
 }

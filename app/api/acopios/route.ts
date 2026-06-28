@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -9,13 +9,13 @@ export async function GET(request: NextRequest) {
   let recursoIds: string[] | null = null;
 
   if (recurso) {
-    const { data: recursosData } = await supabase
+    const { data: recursosData } = await supabaseAdmin
       .from("recursos")
       .select("id")
       .ilike("nombre", recurso);
 
     if (recursosData && recursosData.length > 0) {
-      const { data: acopioRecursos } = await supabase
+      const { data: acopioRecursos } = await supabaseAdmin
         .from("acopio_recursos")
         .select("acopio_id")
         .in("recurso_id", recursosData.map((r) => r.id));
@@ -30,17 +30,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("acopios")
-    .select(`
-      *,
-      recursos:acopio_recursos(
-        recurso:recurso_id(*)
-      )
-    `)
+    .select("*")
     .eq("status", "aprobado")
-    .order("created_at", { ascending: false })
-    .range(offsetVal, offsetVal + limitVal - 1);
+    .order("created_at", { ascending: false });
 
   if (ciudad) {
     query = query.ilike("ciudad", ciudad);
@@ -50,15 +44,48 @@ export async function GET(request: NextRequest) {
     query = query.in("id", recursoIds);
   }
 
-  const { data, error } = await query;
+  const { data: acopios, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const formatted = (data || []).map((item) => ({
+  const acopioIds = (acopios || []).map((a) => a.id);
+  let recursosPorAcopio: Record<string, unknown[]> = {};
+
+  if (acopioIds.length > 0) {
+    const { data: relaciones } = await supabaseAdmin
+      .from("acopio_recursos")
+      .select("acopio_id, recurso_id")
+      .in("acopio_id", acopioIds);
+
+    if (relaciones && relaciones.length > 0) {
+      const todosRecursoIds = [...new Set(relaciones.map((r) => r.recurso_id))];
+
+      const { data: todosRecursos } = await supabaseAdmin
+        .from("recursos")
+        .select("*")
+        .in("id", todosRecursoIds);
+
+      const recursoMap: Record<string, unknown> = {};
+      if (todosRecursos) {
+        for (const r of todosRecursos) {
+          recursoMap[r.id] = r;
+        }
+      }
+
+      for (const rel of relaciones) {
+        if (!recursosPorAcopio[rel.acopio_id]) recursosPorAcopio[rel.acopio_id] = [];
+        if (recursoMap[rel.recurso_id]) {
+          recursosPorAcopio[rel.acopio_id].push(recursoMap[rel.recurso_id]);
+        }
+      }
+    }
+  }
+
+  const formatted = (acopios || []).map((item) => ({
     ...item,
-    recursos: (item.recursos || []).map((r: { recurso: unknown }) => r.recurso),
+    recursos: recursosPorAcopio[item.id] || [],
   }));
 
   return NextResponse.json(formatted);
