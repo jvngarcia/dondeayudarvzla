@@ -24,12 +24,16 @@ async function geocode(direccion: string): Promise<{ lat: number; lng: number } 
     );
     const data = await res.json();
     if (data && data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lng) };
     }
   } catch {
     // geocoding falló, se puede ajustar manualmente luego
   }
   return null;
+}
+
+function generateToken(): string {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
 export async function POST(request: NextRequest) {
@@ -45,7 +49,7 @@ export async function POST(request: NextRequest) {
   const direccion = formData.get("direccion") as string;
   const contacto = formData.get("contacto") as string;
   const horario = formData.get("horario") as string | null;
-  const queRecibenRaw = formData.get("que_reciben") as string;
+  const recursosRaw = formData.get("recursos") as string;
   const estadoInsumos = formData.get("estado_insumos") as string | null;
   const categoria = formData.get("categoria") as string;
   const foto = formData.get("foto") as File | null;
@@ -54,7 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Campos obligatorios: nombre, tipo, dirección, contacto, categoría" }, { status: 400 });
   }
 
-  const queReciben = queRecibenRaw ? queRecibenRaw.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
+  const recursoIds = recursosRaw ? recursosRaw.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
 
   const coords = await geocode(direccion);
 
@@ -75,24 +79,39 @@ export async function POST(request: NextRequest) {
     fotoUrl = urlData.publicUrl;
   }
 
+  const editToken = generateToken();
+
   const { data, error } = await supabase.from("acopios").insert({
     nombre,
     tipo,
     direccion,
     contacto,
     horario: horario || null,
-    que_reciben: queReciben,
     estado_insumos: estadoInsumos || null,
     categoria: categoria || "centro_acopio",
     foto_url: fotoUrl,
     lat: coords?.lat || null,
     lng: coords?.lng || null,
     status: "pendiente",
+    edit_token: editToken,
   }).select().single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, data }, { status: 201 });
+  if (recursoIds.length > 0 && data) {
+    const inserts = recursoIds.map((recursoId: string) => ({
+      acopio_id: data.id,
+      recurso_id: recursoId,
+    }));
+
+    await supabase.from("acopio_recursos").insert(inserts);
+  }
+
+  return NextResponse.json({
+    success: true,
+    data,
+    edit_token: editToken,
+  }, { status: 201 });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -26,11 +27,22 @@ export default function AdminDashboardPage() {
   const loadPending = async () => {
     const { data } = await supabase
       .from("acopios")
-      .select("*")
+      .select(`
+        *,
+        recursos:acopio_recursos(
+          recurso:recurso_id(*)
+        )
+      `)
       .eq("status", "pendiente")
       .order("created_at", { ascending: false });
 
-    if (data) setPending(data);
+    if (data) {
+      const formatted = data.map((item: any) => ({
+        ...item,
+        recursos: (item.recursos || []).map((r: any) => r.recurso),
+      }));
+      setPending(formatted);
+    }
     setLoading(false);
   };
 
@@ -98,9 +110,9 @@ export default function AdminDashboardPage() {
                         <span className="font-medium">Horario:</span> {acopio.horario}
                       </p>
                     )}
-                    {acopio.que_reciben.length > 0 && (
+                    {acopio.recursos && acopio.recursos.length > 0 && (
                       <p className="text-gray-600 text-sm">
-                        <span className="font-medium">Reciben:</span> {acopio.que_reciben.join(", ")}
+                        <span className="font-medium">Reciben:</span> {acopio.recursos.map((r: any) => r.nombre || r.recurso?.nombre).join(", ")}
                       </p>
                     )}
                     {acopio.lat && acopio.lng && (
@@ -113,7 +125,9 @@ export default function AdminDashboardPage() {
                     </p>
                   </div>
                   {acopio.foto_url && (
-                    <img src={acopio.foto_url} alt="" className="w-24 h-24 object-cover rounded ml-4" />
+                    <div className="relative w-24 h-24 ml-4 shrink-0">
+                      <Image src={acopio.foto_url} alt="" fill className="object-cover rounded" sizes="96px" />
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-2 mt-4">

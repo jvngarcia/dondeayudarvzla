@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import type { Acopio } from "@/types";
+import type { Acopio, Recurso } from "@/types";
 
 const MiniMapPicker = dynamic(() => import("@/components/MiniMapPicker"), {
   ssr: false,
@@ -18,6 +18,7 @@ export default function AdminAcopiosPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Acopio>>({});
+  const [recursosCatalogo, setRecursosCatalogo] = useState<Recurso[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -30,17 +31,35 @@ export default function AdminAcopiosPage() {
   const loadAcopios = async () => {
     const { data } = await supabase
       .from("acopios")
-      .select("*")
+      .select(`
+        *,
+        recursos:acopio_recursos(
+          recurso:recurso_id(*)
+        )
+      `)
       .in("status", ["aprobado", "rechazado"])
       .order("created_at", { ascending: false });
 
-    if (data) setAcopios(data);
+    if (data) {
+      const formatted = data.map((item: any) => ({
+        ...item,
+        recursos: (item.recursos || []).map((r: any) => r.recurso),
+      }));
+      setAcopios(formatted);
+    }
+
+    const { data: recursos } = await supabase.from("recursos").select("*").order("nombre");
+    if (recursos) setRecursosCatalogo(recursos);
+
     setLoading(false);
   };
 
   const startEdit = (acopio: Acopio) => {
     setEditingId(acopio.id);
-    setEditForm({ ...acopio });
+    setEditForm({
+      ...acopio,
+      recursos: acopio.recursos || [],
+    });
   };
 
   const saveEdit = async () => {
@@ -53,7 +72,6 @@ export default function AdminAcopiosPage() {
         direccion: editForm.direccion,
         contacto: editForm.contacto,
         horario: editForm.horario,
-        que_reciben: editForm.que_reciben,
         estado_insumos: editForm.estado_insumos,
         categoria: editForm.categoria,
         lat: editForm.lat,
@@ -62,8 +80,33 @@ export default function AdminAcopiosPage() {
       .eq("id", editingId);
 
     if (!error) {
+      await supabase.from("acopio_recursos").delete().eq("acopio_id", editingId);
+
+      const selectedIds = (editForm.recursos as Recurso[])?.map((r: Recurso) => r.id) || [];
+      if (selectedIds.length > 0) {
+        await supabase.from("acopio_recursos").insert(
+          selectedIds.map((recursoId: string) => ({
+            acopio_id: editingId,
+            recurso_id: recursoId,
+          }))
+        );
+      }
+
       setEditingId(null);
       loadAcopios();
+    }
+  };
+
+  const toggleRecursoEdit = (recursoId: string) => {
+    const current = (editForm.recursos as Recurso[]) || [];
+    const exists = current.find((r: Recurso) => r.id === recursoId);
+    if (exists) {
+      setEditForm({ ...editForm, recursos: current.filter((r: Recurso) => r.id !== recursoId) });
+    } else {
+      const recurso = recursosCatalogo.find((r) => r.id === recursoId);
+      if (recurso) {
+        setEditForm({ ...editForm, recursos: [...current, recurso] });
+      }
     }
   };
 
@@ -143,6 +186,27 @@ export default function AdminAcopiosPage() {
                         }`}>
                           {acopio.status === "aprobado" ? "Aprobado" : "Rechazado"}
                         </span>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Recursos que necesitan</label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {recursosCatalogo.map((r) => {
+                            const isSelected = (editForm.recursos as Recurso[])?.some((er: Recurso) => er.id === r.id);
+                            return (
+                              <button
+                                key={r.id}
+                                onClick={() => toggleRecursoEdit(r.id)}
+                                className={`px-2.5 py-1 rounded-full text-xs font-medium border-2 transition-all ${
+                                  isSelected
+                                    ? "bg-red-600 text-white border-red-600"
+                                    : "bg-white text-gray-600 border-gray-200 hover:border-red-300"
+                                }`}
+                              >
+                                {r.nombre}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Estado de insumos</label>
